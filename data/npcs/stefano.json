@@ -1,0 +1,118 @@
+{
+  "$schema": "../schema/conversa.schema.json",
+  "id": "stefano",
+  "npc": "Stefano Sero",
+  "descricao": "Conversar com Stefano Sero, autor do bilhete do portão 57.",
+  "tema": "seguro",
+  "avatar": "assets/imagens/Stefano Sero.png",
+  "voz": {
+    "nome": "pt-BR-AntonioNeural",
+    "velocidade": "+0%",
+    "tom": "+0Hz"
+  },
+  "humor": {
+    "confianca": 50
+  },
+  "inicio": "inicio",
+  "nos": {
+    "inicio": {
+      "narracao": "O homem ergue os olhos, cansado, e ajeita a mochila nas costas.",
+      "fala": "Ei, {jogador}... você também veio lá de baixo, não foi? Dá pra ver pela poeira nas suas roupas.",
+      "opcoes": [
+        {
+          "texto": "Quem é você?",
+          "proximo": "quem_sou"
+        },
+        {
+          "texto": "Quanto tempo se passou?",
+          "proximo": "anos"
+        },
+        {
+          "texto": "Está procurando alguém?",
+          "proximo": "esposa"
+        },
+        {
+          "texto": "Preciso ir.",
+          "proximo": null
+        }
+      ]
+    },
+    "quem_sou": {
+      "fala": "Stefano Sero. Fui eu que deixei o bilhete na porta do terminal do portão 57. A câmara de criogenia me jogou pra fora do mesmo jeito que fez com você, pelo visto.",
+      "opcoes": [
+        {
+          "texto": "Está procurando alguém?",
+          "proximo": "esposa"
+        },
+        {
+          "texto": "Voltar ao início da conversa.",
+          "proximo": "inicio"
+        },
+        {
+          "texto": "Encerrar.",
+          "proximo": null
+        }
+      ]
+    },
+    "anos": {
+      "fala": "Pelo que ouvi dos sobreviventes... cento e vinte e cinco anos. Eu também não quis acreditar. O mundo lá em cima não é o que a gente imaginava quando entrou naquelas câmaras.",
+      "opcoes": [
+        {
+          "texto": "Como é o mundo lá em cima?",
+          "proximo": "mundo"
+        },
+        {
+          "texto": "Voltar ao início da conversa.",
+          "proximo": "inicio"
+        }
+      ]
+    },
+    "mundo": {
+      "fala": "Mutações, {jogador}. Elas acabaram com quem ficou no solo. Quem sobreviveu se juntou em clãs: uns tentam reconstruir, outros combatem as pragas, e tem facções cobrando pedágio dos que sobraram. Cada subsolo tem um número, e o nosso é o 57.",
+      "opcoes": [
+        {
+          "texto": "Voltar ao início da conversa.",
+          "proximo": "inicio"
+        },
+        {
+          "texto": "Encerrar.",
+          "proximo": null
+        }
+      ]
+    },
+    "esposa": {
+      "fala": "Minha esposa. Cabelo castanho, bem comprido, camiseta preta e jaqueta. Só encontrei a câmara dela aberta... Ouvi dizer que alguém assim foi vista perto de uma cidade aqui por perto.",
+      "opcoes": [
+        {
+          "texto": "Que cidade?",
+          "proximo": "cidade"
+        },
+        {
+          "texto": "Vou ficar de olho.",
+          "proximo": "promessa"
+        },
+        {
+          "texto": "Voltar ao início da conversa.",
+          "proximo": "inicio"
+        }
+      ]
+    },
+    "cidade": {
+      "fala": "Dizem que está cheia de gente abrigada, mas tem algo errado ali. Uma maldição, ou alguém puxando as cordas. Não sei qual das duas coisas me assusta mais.",
+      "opcoes": [
+        {
+          "texto": "Vou ficar de olho.",
+          "proximo": "promessa"
+        },
+        {
+          "texto": "Voltar ao início da conversa.",
+          "proximo": "inicio"
+        }
+      ]
+    },
+    "promessa": {
+      "fala": "Obrigado, {jogador}. Se encontrar ela, diga que estou vivo e que estou atrás dela. Boa sorte lá fora.",
+      "opcoes": []
+    }
+  }
+}
