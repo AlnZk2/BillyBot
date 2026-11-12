@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Conversa do BillyBot",
+  "description": "Formato dos arquivos de data/npcs e data/story. Com este esquema, o VS Code avisa erros e sugere campos enquanto você edita.",
+  "type": "object",
+  "required": ["npc", "descricao", "inicio", "nos"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "Vira o comando !id no Discord. Sem este campo, vale o nome do arquivo."
+    },
+    "npc": { "type": "string", "description": "Nome mostrado ao lado da foto de perfil." },
+    "descricao": { "type": "string", "description": "Texto que aparece na lista do !conversas." },
+    "tema": { "type": "string", "description": "Tema de data/temas.json (criogenia, alerta, seguro...)." },
+    "cor": { "$ref": "#/$defs/cor", "description": "Opcional: cor própria no lugar da cor do tema." },
+    "avatar": { "type": "string", "description": "Link ou caminho do arquivo (ex.: assets/imagens/velho.png)." },
+    "imagem": { "type": "string", "description": "Link de uma miniatura maior no canto do cartão." },
+    "voz": {
+      "type": "object",
+      "required": ["nome"],
+      "properties": {
+        "nome": { "type": "string", "description": "Veja as opções com o comando !vozes." },
+        "velocidade": { "type": "string", "pattern": "^[+-][0-9]+%$", "description": "Ex.: -20% ou +10%." },
+        "tom": { "type": "string", "pattern": "^[+-][0-9]+Hz$", "description": "Ex.: -10Hz (mais grave) ou +5Hz." }
+      }
+    },
+    "humor": {
+      "type": "object",
+      "description": "Valores iniciais de humor do NPC (o item 5 vai usá-los).",
+      "additionalProperties": { "type": "number" }
+    },
+    "variaveis": { "type": "object", "description": "Valores usados nos textos como {chave}." },
+    "pontuacao": {
+      "type": "object",
+      "required": ["empate", "destinos"],
+      "properties": {
+        "empate": { "type": "string" },
+        "destinos": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "inicio": { "type": "string", "description": "Nome do primeiro nó." },
+    "nos": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/no" }
+    }
+  },
+  "$defs": {
+    "cor": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+    "no": {
+      "type": "object",
+      "properties": {
+        "tema": { "type": "string", "description": "Muda a cor e o ambiente só neste nó." },
+        "cor": { "$ref": "#/$defs/cor" },
+        "narracao": { "type": "string", "description": "Cena em itálico. O TTS não fala." },
+        "fala": { "type": "string", "description": "O que o NPC diz. É só isto que o TTS fala." },
+        "fala_tts": { "type": "string", "description": "Mesma fala escrita como se fala (pronúncia)." },
+        "narracao_final": { "type": "string" },
+        "itens": { "type": "array", "items": { "type": "string" } },
+        "opcoes": { "type": "array", "maxItems": 25, "items": { "$ref": "#/$defs/opcao" } }
+      }
+    },
+    "opcao": {
+      "type": "object",
+      "required": ["texto", "proximo"],
+      "properties": {
+        "texto": { "type": "string", "maxLength": 80, "description": "Texto do botão (máximo 80 caracteres)." },
+        "proximo": {
+          "type": ["string", "null"],
+          "description": "Nó seguinte; null encerra a conversa; \"@resultado\" decide pelos pontos."
+        },
+        "reacao": { "type": "string", "description": "Narração curta que abre o próximo nó." },
+        "abordagem": { "type": "string", "description": "Soma 1 ponto nesta categoria de 'pontuacao'." },
+        "uma_vez": { "type": "boolean", "description": "O botão some depois de usado." }
+      }
+    }
+  }
+}
