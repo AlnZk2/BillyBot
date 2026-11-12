@@ -1,0 +1,77 @@
+{
+  "$schema": "../schema/conversa.schema.json",
+  "id": "sobrevivente",
+  "npc": "Sobrevivente Errante",
+  "descricao": "Falar com o sobrevivente que vaga pelas ruínas perto do Subsolo 57.",
+  "tema": "alerta",
+  "voz": {
+    "nome": "pt-BR-AntonioNeural",
+    "velocidade": "+8%",
+    "tom": "+6Hz"
+  },
+  "humor": {
+    "medo": 40,
+    "confianca": 10
+  },
+  "inicio": "inicio",
+  "nos": {
+    "inicio": {
+      "narracao": "Uma figura coberta de poeira surge entre os escombros, mantendo a distância.",
+      "fala": "Calma, {jogador}. Eu não mordo. O que faz sozinho por aqui?",
+      "opcoes": [
+        {
+          "texto": "Preciso de informações sobre a cidade.",
+          "proximo": "cidade"
+        },
+        {
+          "texto": "Procuro uma mulher de cabelo castanho comprido.",
+          "proximo": "mulher"
+        },
+        {
+          "texto": "Não é da sua conta.",
+          "proximo": "grosso"
+        },
+        {
+          "texto": "Ir embora.",
+          "proximo": null
+        }
+      ]
+    },
+    "cidade": {
+      "fala": "Tem gente demais lá dentro e comida de menos. Ouvi dizer que algo ali anda mexendo com a cabeça das pessoas. Se eu fosse você, chegava com cuidado.",
+      "opcoes": [
+        {
+          "texto": "Procuro uma mulher de cabelo castanho comprido.",
+          "proximo": "mulher"
+        },
+        {
+          "texto": "Voltar ao início da conversa.",
+          "proximo": "inicio"
+        }
+      ]
+    },
+    "mulher": {
+      "fala": "Camiseta preta, jaqueta, cabelo comprido? Vi alguém assim rondando perto dessa cidadezinha. Não cheguei perto para confirmar. Num mundo desses, a gente aprende a não se meter.",
+      "opcoes": [
+        {
+          "texto": "Obrigado pela dica.",
+          "proximo": "despedida"
+        },
+        {
+          "texto": "Voltar ao início da conversa.",
+          "proximo": "inicio"
+        }
+      ]
+    },
+    "grosso": {
+      "narracao": "Ele levanta as mãos, recuando devagar.",
+      "fala": "Tá bom, tá bom. Só tentei ser educado. Boa sorte aí.",
+      "opcoes": []
+    },
+    "despedida": {
+      "tema": "seguro",
+      "fala": "Boa sorte, {jogador}. Que as mutações passem longe do seu caminho.",
+      "opcoes": []
+    }
+  }
+}
