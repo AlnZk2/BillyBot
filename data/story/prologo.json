@@ -1,16 +1,135 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Temas visuais do BillyBot",
-  "type": "object",
-  "required": ["padrao"],
-  "properties": { "$schema": { "type": "string" } },
-  "additionalProperties": {
-    "type": "object",
-    "required": ["cor"],
-    "properties": {
-      "cor": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
-      "icone": { "type": "string" },
-      "nome": { "type": "string" }
+  "$schema": "../schema/conversa.schema.json",
+  "id": "prologo",
+  "npc": "Subsolo 57 – Prólogo",
+  "descricao": "Prólogo: o despertar da criogenia no Subsolo 57 até o portão.",
+  "tema": "criogenia",
+  "voz": {
+    "nome": "pt-BR-FranciscaNeural",
+    "velocidade": "-5%",
+    "tom": "-4Hz"
+  },
+  "humor": {
+    "medo": 20,
+    "esperanca": 10
+  },
+  "inicio": "despertar",
+  "nos": {
+    "despertar": {
+      "narracao": "Um alarme agudo rasga o silêncio. O vidro da câmara se desembaça aos poucos e o ar gelado queima seus pulmões. Luzes azuis piscam sobre o teto de aço do Subsolo 57.",
+      "fala": "Quanto tempo eu dormi?",
+      "opcoes": [
+        {
+          "texto": "Tentar se levantar.",
+          "proximo": "levantar"
+        },
+        {
+          "texto": "Ficar parado e escutar o alarme.",
+          "proximo": "escutar"
+        }
+      ]
+    },
+    "escutar": {
+      "narracao": "O alarme se repete, mecânico, e entre um toque e outro você ouve algo pingando ao longe. Não há vozes. Não há passos.",
+      "fala": "Tem alguém aí?",
+      "opcoes": [
+        {
+          "texto": "Levantar e procurar alguém.",
+          "proximo": "levantar"
+        }
+      ]
+    },
+    "levantar": {
+      "narracao": "Suas pernas tremem. Poeira espessa cobre o piso, e as outras câmaras, enfileiradas pelo corredor, brilham fracas, com silhuetas congeladas lá dentro. Nenhuma se move.",
+      "fala": "Eu não sou o único aqui...",
+      "opcoes": [
+        {
+          "texto": "Examinar as câmaras vizinhas.",
+          "proximo": "camaras"
+        },
+        {
+          "texto": "Procurar seus pertences.",
+          "proximo": "pertences"
+        },
+        {
+          "texto": "Seguir pelo corredor.",
+          "proximo": "corredor"
+        }
+      ]
+    },
+    "camaras": {
+      "narracao": "Você limpa o vidro de uma câmara com a manga. Dentro, um rosto pálido e imóvel, com gelo nas pestanas. Mais adiante, uma câmara está aberta e vazia, com o painel apagado.",
+      "fala": "Quantos anos... passaram?",
+      "opcoes": [
+        {
+          "texto": "Voltar ao centro da sala.",
+          "proximo": "levantar"
+        },
+        {
+          "texto": "Seguir pelo corredor.",
+          "proximo": "corredor"
+        }
+      ]
+    },
+    "pertences": {
+      "narracao": "Num armário aberto, você encontra uma mochila desgastada e um convite amassado: abrigue-se no Subsolo 57 caso o alarme de emergência toque.",
+      "fala": "Então foi isso... eu corri para cá.",
+      "itens": [
+        "Mochila desgastada",
+        "Convite do Subsolo 57"
+      ],
+      "opcoes": [
+        {
+          "texto": "Pegar a mochila e seguir pelo corredor.",
+          "proximo": "corredor"
+        },
+        {
+          "texto": "Voltar ao centro da sala.",
+          "proximo": "levantar"
+        }
+      ]
+    },
+    "corredor": {
+      "tema": "alerta",
+      "narracao": "O corredor leste está escuro. Um painel acende e apaga com um aviso: CONTAMINAÇÃO BIOLÓGICA, NÍVEL 2. O ar cheira a mofo e ferrugem. Ao fundo, o portão numerado 57 se ergue, entreaberto.",
+      "fala": "Lá fora não deve ser nada bom.",
+      "opcoes": [
+        {
+          "texto": "Seguir até o portão.",
+          "proximo": "portao"
+        }
+      ]
+    },
+    "portao": {
+      "tema": "alerta",
+      "narracao": "Junto ao terminal do portão há um bilhete preso com fita, o papel amarelado pelo tempo. Perto dali, uma tosse seca e fraca vem do chão.",
+      "opcoes": [
+        {
+          "texto": "Ler o bilhete.",
+          "proximo": "bilhete"
+        },
+        {
+          "texto": "Ir até a tosse.",
+          "proximo": "fim_prologo"
+        }
+      ]
+    },
+    "bilhete": {
+      "tema": "seguro",
+      "narracao": "Você solta o bilhete da fita e lê com cuidado.",
+      "fala": "Caso leia esse bilhete, eu espero que encontre o mesmo caminho que tive para ir em direção à cidade. AH, antes que esqueça: caso aviste uma mulher com um belo cabelo marrom grande, uma camiseta preta e jaqueta, saiba que é a minha esposa. Diga a ela que eu estou vivo e estou atrás dela na cidade que avistei nas proximidades. Boa sorte. Ass: Stefano Sero",
+      "opcoes": [
+        {
+          "texto": "Ir até a tosse.",
+          "proximo": "fim_prologo"
+        }
+      ]
+    },
+    "fim_prologo": {
+      "tema": "alerta",
+      "narracao": "Você se aproxima. No chão frio junto ao portão, um velho de jaleco branco levanta a cabeça com esforço.",
+      "narracao_final": "O velho percebe sua presença. A conversa está prestes a começar.",
+      "opcoes": []
     }
   }
 }
