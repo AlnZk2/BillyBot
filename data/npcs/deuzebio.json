@@ -1,0 +1,231 @@
+{
+  "$schema": "../schema/conversa.schema.json",
+  "id": "deuzebio",
+  "npc": "Deuzébio Barbosa",
+  "descricao": "Encontrar o velho Deuzébio Barbosa, caído no portão do Subsolo 57.",
+  "tema": "criogenia",
+  "avatar": "assets/imagens/Deuzébio Babosa.png",
+  "voz": {
+    "nome": "pt-BR-AntonioNeural",
+    "velocidade": "-22%",
+    "tom": "-12Hz"
+  },
+  "humor": {
+    "medo": 30,
+    "confianca": 0,
+    "raiva": 0
+  },
+  "variaveis": {
+    "codigo_cofre": "5730"
+  },
+  "pontuacao": {
+    "empate": "normal",
+    "destinos": {
+      "pacifica": "final_pacifica",
+      "normal": "final_normal",
+      "agressiva": "final_agressiva"
+    }
+  },
+  "inicio": "carta1",
+  "nos": {
+    "carta1": {
+      "narracao": "No chão frio junto ao portão do Subsolo 57, um velho jaz de lado. O jaleco branco, coberto de poeira, pende em seu corpo magro, e a barba longa se espalha pelo peito. Ao notar sua presença, ele tenta erguer a cabeça, sem forças.",
+      "fala": "Então uma delas falhou... Alguém finalmente acordou lá dentro. Quem é você, guri?",
+      "opcoes": [
+        {
+          "texto": "Calma, vovô. Não vou te machucar. Você está bem?",
+          "proximo": "carta2",
+          "abordagem": "pacifica",
+          "reacao": "Os olhos cansados do velho se suavizam por um instante."
+        },
+        {
+          "texto": "Acabei de acordar e não entendo nada. Quem é você?",
+          "proximo": "carta2",
+          "abordagem": "normal",
+          "reacao": "O velho assente devagar, sem tirar os olhos de você."
+        },
+        {
+          "texto": "Cala a boca, velho. Aqui quem pergunta sou eu.",
+          "proximo": "carta2",
+          "abordagem": "agressiva",
+          "reacao": "O velho solta uma risada seca e debochada."
+        }
+      ]
+    },
+    "carta2": {
+      "narracao": "A tosse vem forte, e ele leva a mão trêmula ao pescoço, onde a pele está escura e inchada.",
+      "fala": "Não perca tempo comigo. Uma barata do tamanho de um cachorro me pegou no corredor. A coisa brilhava no escuro... Remédio pra isso não existe, eu mesmo já tentei de tudo.",
+      "opcoes": [
+        {
+          "texto": "Então é questão de tempo. Fala logo o que sabe.",
+          "proximo": "carta3",
+          "abordagem": "agressiva",
+          "reacao": "O velho aperta o jaleco com os dedos magros."
+        },
+        {
+          "texto": "Sinto muito. Ninguém merece morrer assim, sozinho.",
+          "proximo": "carta3",
+          "abordagem": "pacifica",
+          "reacao": "O velho desvia o olhar por um momento, em silêncio."
+        },
+        {
+          "texto": "Isso explica o seu estado. Há quanto tempo está aqui?",
+          "proximo": "carta3",
+          "abordagem": "normal",
+          "reacao": "Ele solta um suspiro longo."
+        }
+      ]
+    },
+    "carta3": {
+      "narracao": "Ele apoia a cabeça no chão e encara o teto, como se contasse as luzes apagadas.",
+      "fala": "Vivi mais tempo neste buraco do que qualquer um de vocês. Conheço cada corredor, cada porta, cada câmara... Diga, o que você quer de mim?",
+      "opcoes": [
+        {
+          "texto": "Respostas. Onde estamos e o que aconteceu com o mundo?",
+          "proximo": "carta4",
+          "abordagem": "normal",
+          "reacao": "Ele estuda seu rosto por um longo tempo."
+        },
+        {
+          "texto": "Tudo o que você tiver. Passa pra cá.",
+          "proximo": "carta4",
+          "abordagem": "agressiva",
+          "reacao": "O velho cerra o maxilar, sem forças para reagir."
+        },
+        {
+          "texto": "Só quero ajudar. Posso ficar aqui com você.",
+          "proximo": "carta4",
+          "abordagem": "pacifica",
+          "reacao": "Ele quase sorri, surpreso."
+        },
+        {
+          "texto": "???",
+          "proximo": "codigo",
+          "uma_vez": true
+        }
+      ]
+    },
+    "codigo": {
+      "narracao": "O velho o encara em silêncio, como se esperasse ouvir uma palavra específica.",
+      "opcoes": [
+        {
+          "texto": "Dizer: Éden",
+          "proximo": "codigo_errado"
+        },
+        {
+          "texto": "Dizer: Paraíso",
+          "proximo": "segredo_1"
+        },
+        {
+          "texto": "Dizer: Aurora",
+          "proximo": "codigo_errado"
+        }
+      ]
+    },
+    "codigo_errado": {
+      "narracao": "O velho espera um instante e então balança a cabeça, sem saber se desapontado ou aliviado.",
+      "fala": "Não sei do que está falando, guri. Deve ser a poeira nos seus ouvidos.",
+      "opcoes": [
+        {
+          "texto": "Continuar a conversa.",
+          "proximo": "carta3"
+        }
+      ]
+    },
+    "segredo_1": {
+      "narracao": "Quando a palavra deixa sua boca, o velho paralisa. Os olhos, antes turvos, se arregalam. Ele tenta se erguer, mas só consegue virar o rosto para você. A barba treme.",
+      "fala": "Essa palavra... Onde você ouviu essa palavra? Ninguém deveria saber disso. Ninguém... Você sabe de onde ela vem, não sabe?",
+      "opcoes": [
+        {
+          "texto": "Foi você quem nos prendeu naquelas câmaras. Quero a verdade.",
+          "proximo": "segredo_2"
+        }
+      ]
+    },
+    "segredo_2": {
+      "narracao": "O velho fica em silêncio por muito tempo, e algo se quebra em seu rosto cansado. Quando fala, a voz é um fio.",
+      "fala": "Fui eu... Eu coordenava as pesquisas de criogenia. Paraíso foi o nome que dei a tudo isso. Disse que vocês seriam cobaias, a próxima etapa da evolução humana. Era mentira. Eu só queria vocês presos naquele gelo, e quando o alarme tocou, esqueci de vocês como se esquece uma porta trancada. Tentei fugir, e uma barata me alcançou no corredor. Talvez seja o que mereço. Eu não devia ter feito isso com vocês, guri. Não peço perdão. Pegue a chave do meu escritório, no fim do corredor leste. Atrás do quadro com o mapa velho tem um cofre escondido: o código é {codigo_cofre}. Há um pouco de dinheiro de antes da guerra e uma pistola. Comece a sua jornada com algo na mão.",
+      "narracao_final": "Com esforço, ele estende uma chave de latão e a coloca na sua mão. Depois fecha os olhos, e o peito sobe e desce cada vez mais devagar.",
+      "itens": [
+        "Chave do escritório de Deuzébio",
+        "Código do cofre escondido: {codigo_cofre}"
+      ],
+      "opcoes": []
+    },
+    "carta4": {
+      "tema": "alerta",
+      "narracao": "A respiração do velho fica curta. Ao longe, um estalo metálico ecoa pelos corredores, e ele estremece.",
+      "fala": "Ouviu isso? Eles ainda andam por aí... Lá fora é pior, guri. Quando eu me for, este portão fica entregue a quem aparecer. E você vai sair por ele. Acha que está pronto?",
+      "opcoes": [
+        {
+          "texto": "Talvez não. Mas se você me ensinar, eu aprendo.",
+          "proximo": "carta5",
+          "abordagem": "pacifica",
+          "reacao": "O velho solta o ar devagar, quase em paz."
+        },
+        {
+          "texto": "Eu me viro. Quem se preocupa com os outros morre primeiro.",
+          "proximo": "carta5",
+          "abordagem": "agressiva",
+          "reacao": "Ele balança a cabeça, desapontado."
+        },
+        {
+          "texto": "Não estou, mas não tenho escolha. Vou descobrir sozinho.",
+          "proximo": "carta5",
+          "abordagem": "normal",
+          "reacao": "Ele concorda com um leve movimento de cabeça."
+        }
+      ]
+    },
+    "carta5": {
+      "narracao": "O velho fecha os olhos por alguns segundos. Quando volta a abri-los, parece ter tomado uma decisão.",
+      "fala": "Estou cansado, guri. Resta pouco de mim, e você é a última pessoa que vou ver. Então me diga: o que vai fazer comigo?",
+      "opcoes": [
+        {
+          "texto": "Vou revistar seus bolsos. Você não vai precisar de nada disso.",
+          "proximo": "@resultado",
+          "abordagem": "agressiva"
+        },
+        {
+          "texto": "Nada. Só preciso seguir meu caminho. O que você sabe que me ajudaria?",
+          "proximo": "@resultado",
+          "abordagem": "normal"
+        },
+        {
+          "texto": "Não vou te matar. Descanse, eu fico aqui com você.",
+          "proximo": "@resultado",
+          "abordagem": "pacifica"
+        }
+      ]
+    },
+    "final_pacifica": {
+      "tema": "seguro",
+      "narracao": "O velho tira de dentro do jaleco uma chave de latão presa a um cordão e a entrega sem resistência, com um sorriso fraco.",
+      "fala": "Obrigado por não me deixar morrer como um cachorro, guri. Esta é a chave do meu escritório, no fim do corredor leste. Lá dentro estão os pip-boys: aparelhos de pulso que parecem brinquedo velho, mas não são. Eles medem a radiação do ar, acompanham a sua saúde e guardam mapas e o que você carrega. Lá em cima, a radiação e as doenças matam sem avisar, e é o aparelho que avisa antes de ser tarde. Sem um deles, ninguém dura uma semana. Leve um para cada um que acordar.",
+      "narracao_final": "Ele fecha os olhos, e sua respiração se aquieta num sono tranquilo.",
+      "itens": [
+        "Chave do escritório de Deuzébio"
+      ],
+      "opcoes": []
+    },
+    "final_normal": {
+      "narracao": "O velho resmunga e tenta se apoiar no cotovelo, sem conseguir.",
+      "fala": "Vocês, jovens... acordam num mundo de cabeça para baixo e já saem exigindo respostas de quem mal consegue respirar. Mas deixa pra lá. Dormiram sem saber por quê, e nem isso foi justo com vocês. Pega. É a chave do meu escritório, no fim do corredor leste. Leve o que achar útil. E guarde isto: lá em cima, a fome mata mais que as mutações, e a confiança mata mais que a fome.",
+      "narracao_final": "Ele joga a chave perto da sua mão, vira o rosto para o teto e não diz mais nada.",
+      "itens": [
+        "Chave do escritório de Deuzébio"
+      ],
+      "opcoes": []
+    },
+    "final_agressiva": {
+      "tema": "alerta",
+      "narracao": "O velho o encara com um desprezo cansado, o peito subindo e descendo com dificuldade.",
+      "fala": "É assim que vocês começam... Já vi gente como você antes. Faça o que quiser com este corpo velho, guri, mas lembre-se: toda ação tem consequência. Tudo o que você faz lá fora volta pra você. Às vezes demora, às vezes não, mas volta. Lembre-se disso quando as sombras lá em cima começarem a cobrar.",
+      "narracao_final": "Os olhos do velho se fecham e o peito para de se mover. Você revista o jaleco imundo e encontra, no bolso interno, uma chave pequena e desgastada, sem etiqueta. Não há mais ninguém para dizer a que porta ela pertence.",
+      "itens": [
+        "Uma chave pequena e desgastada (sem identificação)"
+      ],
+      "opcoes": []
+    }
+  }
+}
