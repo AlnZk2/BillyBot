@@ -1,0 +1,38 @@
+{
+  "$schema": "./schema/temas.schema.json",
+  "padrao": {
+    "nome": "",
+    "icone": "",
+    "cor": "#8A9199"
+  },
+  "criogenia": {
+    "nome": "Laboratório criogênico",
+    "icone": "❄️",
+    "cor": "#6EC1E4"
+  },
+  "alerta": {
+    "nome": "Zona de perigo",
+    "icone": "☢️",
+    "cor": "#C1121F"
+  },
+  "seguro": {
+    "nome": "Área segura",
+    "icone": "🌿",
+    "cor": "#3FA34D"
+  },
+  "info": {
+    "nome": "",
+    "icone": "ℹ️",
+    "cor": "#6EC1E4"
+  },
+  "sucesso": {
+    "nome": "",
+    "icone": "✅",
+    "cor": "#3FA34D"
+  },
+  "erro": {
+    "nome": "",
+    "icone": "⚠️",
+    "cor": "#C1121F"
+  }
+}
