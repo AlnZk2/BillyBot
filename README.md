@@ -553,13 +553,13 @@ Roteiro das melhorias planejadas, em ordem de complexidade.
 |---|---|---|
 | 1 | Diálogos e fichas de NPC em JSON (`data/npcs/` e `data/story/`) | Pronto na 2.0.0 |
 | 2 | Embeds dinâmicos com temas visuais | Pronto na 2.0.0 |
-| 3 | Ficha de personagem e inventário com `/sheet` (SQLite) | Planejada |
-| 4 | Memória de escolhas (histórico de nós e escolhas críticas) | Planejada |
-| 5 | Humor e emoções dinâmicas (variáveis de estado que liberam opções) | Planejada |
-| 6 | Diário de sessão exportável em Markdown | Planejada |
-| 7 | Blip-TTS no estilo Undertale/Deltarune | Planejada |
-| 8 | Trilha sonora dinâmica por local, no canal de voz | Planejada |
-| 9 | Dashboard web de administração (Flask) | Planejada |
+| 3 | Ficha de personagem e inventário com `/sheet` (SQLite) | Em desenvolvimento (2.1.0) |
+| 4 | Memória de escolhas (histórico de nós e escolhas críticas) | Em desenvolvimento (2.1.0) |
+| 5 | Humor e emoções dinâmicas (variáveis de estado que liberam opções) | Em Planejamento |
+| 6 | Diário de sessão exportável em Markdown | Em Planejamento |
+| 7 | Blip-TTS no estilo Undertale/Deltarune | Em Planejamento |
+| 8 | Trilha sonora dinâmica por local, no canal de voz | Em Planejamento |
+| 9 | Dashboard web de administração (Flask) | Em Planejamento |
 
 A ideia de usar atributos da ficha nas conversas (por exemplo, negociar um pedágio conforme o
 Carisma) volta junto com os itens 3 e 5. A ideia de bots de NPC separados continua anotada para depois.
