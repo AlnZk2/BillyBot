@@ -29,14 +29,18 @@ class Erros(commands.Cog):
             )
             return
 
-        if isinstance(error, commands.BadArgument):
+        if isinstance(error, commands.MemberNotFound):
             await ctx.send(
                 embed=embeds.erro(
                     "Jogador não encontrado",
-                    "Marque o jogador com @ ou deixe sem marcar para liberar a conversa a todos.",
+                    "Marque o jogador com @ (ou, nas conversas, deixe sem marcar para liberar a todos).",
                 ),
                 delete_after=10,
             )
+            return
+
+        if isinstance(error, commands.BadArgument):
+            await ctx.send(embed=embeds.erro("Argumento inválido", str(error)), delete_after=10)
             return
 
         if isinstance(error, commands.MissingRequiredArgument):
