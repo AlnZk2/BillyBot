@@ -2,10 +2,15 @@
 views.py - Botões de resposta e controle da conversa (a "roda de diálogo").
 """
 
+import logging
+
 import discord
 
 from billybot.core.motor import Sessao, aplicar_variaveis
+from billybot.services.personagens import PersonagemInexistente
 from billybot.ui.embeds import nome_do
+
+log = logging.getLogger("billybot.views")
 
 
 class BotaoOpcao(discord.ui.Button):
@@ -22,7 +27,10 @@ class BotaoOpcao(discord.ui.Button):
 
 
 class DialogoView(discord.ui.View):
-    def __init__(self, bot, conversa, jogador, canal_mestre=None, avatar_url=None):
+    def __init__(
+        self, bot, conversa, jogador, canal_mestre=None, avatar_url=None,
+        contexto=None, execucao_id=None,
+    ):
         super().__init__(timeout=bot.settings.tempo_limite)
         self.bot = bot
         self.conversa = conversa
@@ -31,7 +39,9 @@ class DialogoView(discord.ui.View):
         self.avatar_url = avatar_url
         self.voz = conversa.get("voz")    # None = este NPC não fala
         self.voz_aberta = False
-        self.sessao = Sessao(conversa)
+        self.execucao_id = execucao_id    # None = esta conversa não é gravada na memória
+        self.memoria_fechada = False
+        self.sessao = Sessao(conversa, contexto)
         self.mensagem = None
         self._montar_botoes()
 
@@ -51,6 +61,51 @@ class DialogoView(discord.ui.View):
         for posicao, (indice, opcao) in enumerate(self.sessao.opcoes_visiveis()):
             texto = aplicar_variaveis(opcao["texto"], self.conversa, nome)
             self.add_item(BotaoOpcao(texto, indice, posicao))
+
+    # ---- memória (item 4): grava visitas, escolhas, marcas e itens ----
+    def _memoria_ativa(self):
+        return self.jogador is not None and self.execucao_id is not None
+
+    async def abrir_memoria(self):
+        """Chamado quando a conversa é publicada: grava a primeira carta."""
+        await self._persistir()
+
+    async def _persistir(self):
+        eventos = self.sessao.drenar_eventos()
+        if not eventos or not self._memoria_ativa():
+            return
+        bot, jogador_id = self.bot, self.jogador.id
+        try:
+            await bot.memoria.registrar(
+                self.execucao_id, jogador_id, self.conversa.get("id", "?"), eventos
+            )
+        except Exception:
+            log.exception("Não consegui gravar a memória da conversa.")
+
+        for evento in eventos:
+            if evento[0] != "itens":
+                continue
+            try:
+                await bot.personagens.dar_itens(jogador_id, evento[1])
+            except PersonagemInexistente:
+                lista = ", ".join(f"{item} x{qtd}" for item, qtd in evento[1].items())
+                await self._enviar_ao_mestre(
+                    f"**{nome_do(self.jogador)}** ainda não tem personagem: itens não entregues "
+                    f"({lista}). Use `!personagem @jogador <nome>` e `!dar`."
+                )
+            except Exception:
+                log.exception("Não consegui entregar os itens ao jogador.")
+
+    async def _finalizar_memoria(self, motivo):
+        if self.memoria_fechada or not self._memoria_ativa():
+            return
+        self.memoria_fechada = True
+        try:
+            await self.bot.memoria.finalizar_execucao(
+                self.execucao_id, self.sessao.no_atual, motivo
+            )
+        except Exception:
+            log.exception("Não consegui finalizar o registro da conversa.")
 
     # ---- voz (TTS): só a "fala" é falada, nunca a narração ----
     def _usa_voz(self):
@@ -106,23 +161,28 @@ class DialogoView(discord.ui.View):
         if len(self.sessao.caminho) > passos_antes:
             self._falar_agora()
 
+        await self._persistir()
+
         if not continua:
             await self._avisar_mestre("terminou")
+            await self._finalizar_memoria("terminou")
             self._fechar_voz()
             self.stop()
 
-    async def _avisar_mestre(self, motivo):
-        """Relatório privado no canal de comandos (só se for outro canal)."""
+    async def _enviar_ao_mestre(self, texto):
+        """Mensagem privada no canal de comandos (só se for outro canal)."""
         if self.canal_mestre is None:
             return
-        texto = (
-            f"Conversa **{self.conversa['npc']}** com **{nome_do(self.jogador)}** "
-            f"{motivo}.\n{self.sessao.resumo()}"
-        )
         try:
             await self.canal_mestre.send(texto)
         except discord.HTTPException:
             pass
+
+    async def _avisar_mestre(self, motivo):
+        await self._enviar_ao_mestre(
+            f"Conversa **{self.conversa['npc']}** com **{nome_do(self.jogador)}** "
+            f"{motivo}.\n{self.sessao.resumo()}"
+        )
 
     async def on_timeout(self):
         if self.mensagem is None:
@@ -132,4 +192,5 @@ class DialogoView(discord.ui.View):
         except discord.HTTPException:
             pass
         await self._avisar_mestre("expirou por falta de resposta")
+        await self._finalizar_memoria("expirou")
         self._fechar_voz()
