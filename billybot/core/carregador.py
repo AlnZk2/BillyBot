@@ -16,10 +16,27 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from billybot.core.motor import RESULTADO
+from billybot.core.motor import CAMPOS_DAS_VARIANTES, RESULTADO, como_lista
 
 # Nomes que já são comandos do bot: nenhuma conversa pode usá-los como id.
-RESERVADOS = frozenset({"help", "conversas", "recarregar", "falar", "vozes", "testarvoz"})
+RESERVADOS = frozenset({
+    "help", "conversas", "recarregar", "falar", "vozes", "testarvoz",   # dialogos e voz
+    "personagem", "ficha", "saude", "status", "local", "dar", "tirar", "itens",  # ficha (item 3)
+    "memoria", "marca", "desmarcar", "esquecer",                          # memória (item 4)
+    "sincronizar", "sheet",                                               # comandos slash
+})
+
+# Categorias de itens: id -> (emoji, título mostrado na ficha). A ordem é a da ficha.
+CATEGORIAS_DE_ITENS = {
+    "sucata": ("🔩", "Sucata"),
+    "consumivel": ("💊", "Consumíveis"),
+    "equipamento": ("🎒", "Equipamento"),
+    "chave": ("🗝️", "Chaves"),
+    "diverso": ("📦", "Diversos"),
+}
+
+# Chaves aceitas dentro de um bloco "se"
+CHAVES_DE_CONDICAO = frozenset({"marca", "sem_marca", "item", "sem_item"})
 
 # (subpasta de data/, tipo da conversa)
 SUBPASTAS = (("npcs", "npc"), ("story", "historia"))
@@ -76,6 +93,65 @@ def carregar_temas(caminho: Path, erros: list) -> dict:
     return temas
 
 
+def carregar_itens(caminho: Path, erros: list) -> dict:
+    """Lê data/itens.json (opcional). Cada item precisa de 'nome'; 'categoria', 'emoji' e 'descricao' são opcionais."""
+    if not caminho.is_file():
+        return {}
+    bruto = _ler_json(caminho, "itens.json", erros)
+    if bruto is None:
+        return {}
+    if not isinstance(bruto, dict):
+        erros.append("[itens.json] precisa ser um objeto com os itens.")
+        return {}
+
+    itens = {}
+    for chave, item in bruto.items():
+        if chave.startswith("$"):  # "$schema"
+            continue
+        if not PADRAO_ID.match(chave):
+            erros.append(f"[itens.json] o id '{chave}' deve ter só letras minúsculas, números e _.")
+            continue
+        if not isinstance(item, dict) or not isinstance(item.get("nome"), str) or not item["nome"].strip():
+            erros.append(f"[itens.json] o item '{chave}' precisa do campo de texto 'nome'.")
+            continue
+        categoria = item.get("categoria", "diverso")
+        if categoria not in CATEGORIAS_DE_ITENS:
+            erros.append(
+                f"[itens.json] a categoria '{categoria}' do item '{chave}' não existe "
+                f"(use {', '.join(CATEGORIAS_DE_ITENS)})."
+            )
+            continue
+        itens[chave] = item
+    return itens
+
+
+def _marcas_da_conversa(conversa: dict):
+    """Retorna (marcas que a conversa cria, marcas que ela usa em 'se')."""
+    definidas, usadas = set(), set()
+    nos = conversa.get("nos") if isinstance(conversa.get("nos"), dict) else {}
+
+    def textos(valor):
+        return {m for m in como_lista(valor) if isinstance(m, str)}
+
+    def ler_se(se):
+        if isinstance(se, dict):
+            usadas.update(textos(se.get("marca")))
+            usadas.update(textos(se.get("sem_marca")))
+
+    for no in nos.values():
+        if not isinstance(no, dict):
+            continue
+        definidas.update(textos(no.get("marca")))
+        for variante in no.get("variantes") or []:
+            if isinstance(variante, dict):
+                ler_se(variante.get("se"))
+        for opcao in no.get("opcoes") or []:
+            if isinstance(opcao, dict):
+                definidas.update(textos(opcao.get("marca")))
+                ler_se(opcao.get("se"))
+    return definidas, usadas
+
+
 def _textos_do_no(no: dict):
     """Gera (campo, texto) de tudo o que o jogador pode ler em um nó."""
     for campo in ("narracao", "fala", "fala_tts", "narracao_final"):
@@ -91,14 +167,49 @@ def _textos_do_no(no: dict):
             yield "opcao", opcao["texto"]
         if isinstance(opcao.get("reacao"), str):
             yield "reacao", opcao["reacao"]
+    for variante in no.get("variantes") or []:
+        if isinstance(variante, dict):
+            for campo in ("narracao", "fala", "fala_tts", "narracao_final"):
+                if isinstance(variante.get(campo), str):
+                    yield f"variante/{campo}", variante[campo]
 
 
-def validar_conversa(chave: str, conversa: dict, temas: dict, origem: str):
+def validar_conversa(chave: str, conversa: dict, temas: dict, origem: str, itens: dict | None = None):
     """Confere uma conversa. Retorna (erros, avisos); nunca levanta exceção."""
     erros, avisos = [], []
+    itens = itens or {}
 
     def erro(local: str, mensagem: str):
         erros.append(f"[{origem}] " + (f"{local}: " if local else "") + mensagem)
+
+    def validar_marcas(valor, onde: str, campo: str):
+        if valor is None:
+            return
+        marcas = valor if isinstance(valor, list) else [valor]
+        if not all(isinstance(m, str) and PADRAO_ID.match(m) for m in marcas):
+            erro(onde, f"'{campo}' deve ser um texto (ou lista de textos) só com letras minúsculas, números e _.")
+
+    def validar_condicao(se, onde: str):
+        if se is None:
+            return
+        if not isinstance(se, dict):
+            erro(onde, "'se' deve ser um objeto.")
+            return
+        for chave_se, valor in se.items():
+            if chave_se not in CHAVES_DE_CONDICAO:
+                erro(onde, f"'se' não conhece '{chave_se}' (use {', '.join(sorted(CHAVES_DE_CONDICAO))}).")
+                continue
+            lista = valor if isinstance(valor, list) else [valor]
+            if not all(isinstance(v, str) for v in lista):
+                erro(onde, f"em 'se', '{chave_se}' deve ser um texto ou uma lista de textos.")
+            elif chave_se in ("item", "sem_item"):
+                for item in lista:
+                    if item not in itens:
+                        erro(onde, f"o item '{item}' (em 'se') não existe em itens.json.")
+            else:
+                for marca in lista:
+                    if not PADRAO_ID.match(marca):
+                        erro(onde, f"marca inválida '{marca}' em 'se' (só letras minúsculas, números e _).")
 
     if not PADRAO_ID.match(chave):
         erro("", f"o id '{chave}' deve ter só letras minúsculas, números e _ (sem espaços ou acentos).")
@@ -174,12 +285,45 @@ def validar_conversa(chave: str, conversa: dict, temas: dict, origem: str):
         if no.get("cor") and not PADRAO_COR.match(str(no["cor"])):
             erro(local, "'cor' deve estar no formato #RRGGBB.")
 
+        validar_marcas(no.get("marca"), local, "marca")
+
+        da_itens = no.get("da_itens")
+        if da_itens is not None:
+            if not isinstance(da_itens, dict) or not da_itens:
+                erro(local, "'da_itens' deve ser um objeto {id_do_item: quantidade}.")
+            else:
+                for item, quantidade in da_itens.items():
+                    if item not in itens:
+                        erro(local, f"o item '{item}' (em 'da_itens') não existe em itens.json.")
+                    if isinstance(quantidade, bool) or not isinstance(quantidade, int) or quantidade < 1:
+                        erro(local, f"a quantidade de '{item}' em 'da_itens' deve ser um inteiro maior que 0.")
+
+        variantes = no.get("variantes")
+        if variantes is not None:
+            if not isinstance(variantes, list):
+                erro(local, "'variantes' deve ser uma lista.")
+            else:
+                for n, variante in enumerate(variantes, start=1):
+                    onde_v = f"{local}, variante {n}"
+                    if not isinstance(variante, dict) or "se" not in variante:
+                        erro(onde_v, "precisa ser um objeto com 'se'.")
+                        continue
+                    validar_condicao(variante["se"], onde_v)
+                    for campo in variante:
+                        if campo != "se" and campo not in CAMPOS_DAS_VARIANTES:
+                            erro(onde_v, f"'{campo}' não pode ser trocado por uma variante "
+                                         f"(use {', '.join(CAMPOS_DAS_VARIANTES)}).")
+                    if variante.get("tema") and variante["tema"] not in temas:
+                        erro(onde_v, f"o tema '{variante['tema']}' não existe em temas.json.")
+
         opcoes = no.get("opcoes", [])
         if not isinstance(opcoes, list):
             erro(local, "'opcoes' deve ser uma lista.")
             continue
         if len(opcoes) > 25:
             erro(local, "mais de 25 opções.")
+        if opcoes and all(isinstance(o, dict) and o.get("se") for o in opcoes):
+            erro(local, "todas as opções têm 'se'; deixe ao menos uma sempre disponível.")
 
         for campo, texto in _textos_do_no(no):
             for variavel in PADRAO_VARIAVEL.findall(texto):
@@ -193,6 +337,8 @@ def validar_conversa(chave: str, conversa: dict, temas: dict, origem: str):
                 continue
             if len(opcao["texto"]) > 80:
                 erro(onde, "o 'texto' passa de 80 caracteres (limite do botão do Discord).")
+            validar_marcas(opcao.get("marca"), onde, "marca")
+            validar_condicao(opcao.get("se"), onde)
 
             proximo = opcao["proximo"]
             if proximo == RESULTADO:
@@ -254,6 +400,7 @@ class Catalogo:
 
     conversas: dict = field(default_factory=dict)
     temas: dict = field(default_factory=dict)
+    itens: dict = field(default_factory=dict)
     erros: list = field(default_factory=list)
     avisos: list = field(default_factory=list)
 
@@ -262,6 +409,7 @@ class Catalogo:
         pasta_dados = Path(pasta_dados)
         catalogo = cls()
         catalogo.temas = carregar_temas(pasta_dados / "temas.json", catalogo.erros)
+        catalogo.itens = carregar_itens(pasta_dados / "itens.json", catalogo.erros)
 
         for subpasta, tipo in SUBPASTAS:
             pasta = pasta_dados / subpasta
@@ -287,8 +435,22 @@ class Catalogo:
                 conversa["id"] = chave
                 conversa["tipo"] = tipo
                 conversa["_origem"] = origem
-                erros, avisos = validar_conversa(chave, conversa, catalogo.temas, origem)
+                erros, avisos = validar_conversa(chave, conversa, catalogo.temas, origem, catalogo.itens)
                 catalogo.erros.extend(erros)
                 catalogo.avisos.extend(avisos)
                 catalogo.conversas[chave] = conversa
+
+        # Marcas usadas em 'se' que nenhuma conversa cria (só o mestre, com !marca, poderia criá-las)
+        todas_definidas = set()
+        usadas_por_origem = {}
+        for conversa in catalogo.conversas.values():
+            definidas, usadas = _marcas_da_conversa(conversa)
+            todas_definidas |= definidas
+            usadas_por_origem[conversa["_origem"]] = usadas
+        for origem, usadas in usadas_por_origem.items():
+            for marca in sorted(usadas - todas_definidas):
+                catalogo.avisos.append(
+                    f"[{origem}] usa a marca '{marca}' em 'se', mas nenhuma conversa a cria "
+                    f"(só o mestre, com !marca)."
+                )
         return catalogo
