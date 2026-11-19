@@ -31,6 +31,8 @@ class Settings:
     caminho_env: str
     raiz: Path = RAIZ
     tempo_limite: int = 300  # segundos sem clicar até a conversa encerrar sozinha
+    guild_id: int = 0        # servidor para sincronizar os comandos / na hora (0 = global)
+    caminho_db: Path = RAIZ / "db" / "billybot.sqlite"  # banco de dados SQLite
 
     @property
     def pasta_dados(self) -> Path:
@@ -53,4 +55,6 @@ class Settings:
             voz_canal_id=_inteiro("VOZ_CANAL_ID"),
             ffmpeg_path=os.getenv("FFMPEG_PATH", "ffmpeg") or "ffmpeg",
             caminho_env=encontrado,
+            guild_id=_inteiro("GUILD_ID"),
+            caminho_db=Path(os.getenv("DB_PATH") or RAIZ / "db" / "billybot.sqlite"),
         )
