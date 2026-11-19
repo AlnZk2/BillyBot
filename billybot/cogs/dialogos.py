@@ -89,7 +89,20 @@ class Dialogos(commands.Cog):
             extras["file"] = discord.File(arquivo, filename=nome_anexo)
             avatar_url = f"attachment://{nome_anexo}"
 
-        view = DialogoView(bot, conversa, jogador, canal_mestre, avatar_url)
+        # Memória: com jogador marcado, o bot lembra marcas e inventário e grava a conversa.
+        contexto, execucao_id = None, None
+        if jogador is not None:
+            try:
+                contexto = await bot.memoria.contexto(jogador.id)
+                execucao_id = await bot.memoria.iniciar_execucao(jogador.id, chave)
+            except Exception:
+                log.exception("Memória indisponível: a conversa segue sem gravar.")
+                contexto, execucao_id = None, None
+
+        view = DialogoView(
+            bot, conversa, jogador, canal_mestre, avatar_url,
+            contexto=contexto, execucao_id=execucao_id,
+        )
         embed = bot.embeds.no_de_conversa(conversa, view.sessao.no, jogador, avatar_url=avatar_url)
         try:
             view.mensagem = await canal.send(embed=embed, view=view, **extras)
@@ -100,6 +113,7 @@ class Dialogos(commands.Cog):
             ))
             return
 
+        await view.abrir_memoria()
         await view.abrir_voz()
 
         if canal_mestre is not None:
@@ -139,6 +153,7 @@ class Dialogos(commands.Cog):
         self._remover_atalhos()
         self.bot.catalogo = novo
         self.bot.embeds.temas = novo.temas
+        self.bot.embeds.itens = novo.itens
         self._registrar_atalhos()
         await ctx.send(embed=self.bot.embeds.sucesso(
             "Dados recarregados",
