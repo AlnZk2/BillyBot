@@ -37,6 +37,9 @@ publica a conversa no canal do RPG, onde os jogadores respondem.
 A partir da versão 2.0.0, os textos das conversas ficam em arquivos **JSON** (pasta `data/`)
 e o código é dividido em **cogs** (módulos do `discord.py`), para que novos sistemas
 possam ser adicionados sem mexer no que já funciona.
+A partir da versão 2.1.0, o bot também guarda a **ficha, o inventário e a memória das escolhas**
+dos jogadores em um banco SQLite. O que o jogador fez em uma conversa pode mudar o que um NPC diz
+(ou quais botões aparecem) em conversas futuras.
 
 ## Funcionalidades
 
@@ -61,9 +64,14 @@ possam ser adicionados sem mexer no que já funciona.
 - Conversa encerra sozinha após 5 minutos sem resposta.
 - Validação automática dos JSON ao ligar o bot (links quebrados, temas inexistentes, nós sem saída).
 - Suíte de testes automáticos (`python -m pytest`).
+- Ficha de personagem e inventário no banco SQLite, com o comando slash `/sheet` (resposta privada ao jogador).
+- Catálogo de itens em `data/itens.json` (sucata, consumíveis, equipamento, chaves e diversos).
+- Conversas que entregam itens ao jogador (`da_itens`).
+- Memória de escolhas: o bot grava cartas visitadas, escolhas e **marcas** (escolhas marcantes) de cada jogador.
+- Condições `se` que mostram ou escondem botões conforme marcas e itens, e **variantes** que trocam falas.
+- Ferramentas do mestre para ficha, saúde, itens, marcas e memória.
 
 ## Estrutura de arquivos
-
 ```
 BillyBot/
 ├── main.py                  # ponto de entrada: python main.py
@@ -75,24 +83,31 @@ BillyBot/
 ├── README.md
 ├── billybot/                # o código, dividido por responsabilidade
 │   ├── __init__.py          # versão do bot
-│   ├── bot.py               # classe BillyBot: junta configurações, dados e cogs
-│   ├── config.py            # lê o .env (token, canais, FFmpeg)
+│   ├── bot.py               # classe BillyBot: junta configurações, dados, banco e cogs
+│   ├── config.py            # lê o .env (token, canais, FFmpeg, banco)
 │   ├── diagnostico.py       # resumo mostrado no terminal ao ligar
 │   ├── core/                # regras do jogo, sem Discord
-│   │   ├── motor.py         # Sessao: pontos, opções ocultas, resultado
-│   │   └── carregador.py    # lê e valida os JSON de data/ (item 1)
+│   │   ├── motor.py         # Sessao: pontos, marcas, itens, condições, variantes
+│   │   └── carregador.py    # lê e valida os JSON de data/
 │   ├── ui/                  # tudo o que o jogador vê
-│   │   ├── embeds.py        # fábrica de embeds com temas (item 2)
+│   │   ├── embeds.py        # fábrica de embeds com temas, ficha e memória
 │   │   └── views.py         # botões da roda de diálogo
 │   ├── services/            # coisas que falam com o mundo de fora
+│   │   ├── banco.py         # SQLite: conexão e migrações
+│   │   ├── personagens.py   # ficha, saúde e inventário (item 3)
+│   │   ├── memoria.py       # execuções, escolhas e marcas (item 4)
 │   │   ├── tts.py           # voz: gera o áudio e fala no canal de voz
 │   │   └── avatares.py      # acha a foto de cada NPC
 │   └── cogs/                # comandos, um tema por arquivo
 │       ├── dialogos.py      # !<id>, !falar, !conversas, !recarregar
+│       ├── ficha.py         # /sheet, !personagem, !ficha, !saude, !dar, !tirar...
+│       ├── memoria.py       # !memoria, !marca, !desmarcar, !esquecer
 │       ├── voz.py           # !vozes, !testarvoz
+│       ├── admin.py         # !sincronizar
 │       └── erros.py         # mensagens amigáveis de erro
 ├── data/                    # o conteúdo do jogo (você edita aqui)
 │   ├── temas.json           # cores e ícones dos embeds
+│   ├── itens.json           # catálogo de itens
 │   ├── npcs/                # um JSON por NPC
 │   │   ├── deuzebio.json
 │   │   ├── stefano.json
@@ -100,6 +115,7 @@ BillyBot/
 │   ├── story/               # um JSON por história/narração
 │   │   └── prologo.json
 │   └── schema/              # esquemas que ajudam o VS Code a validar os JSON
+├── db/                      # banco SQLite (criado sozinho; não vai para o Git)
 ├── assets/
 │   ├── imagens/             # fotos de perfil dos NPCs
 │   └── audio/               # reservada para os itens 7 e 8
@@ -109,25 +125,59 @@ BillyBot/
 ### Como as peças se encaixam
 
 1. `main.py` lê o `.env` (`config.py`), carrega e valida os JSON (`carregador.py`) e liga o `BillyBot`.
-2. O `BillyBot` carrega os cogs. O cog `dialogos` cria um comando para cada JSON.
-3. Ao digitar `!deuzebio @jogador`, o cog publica a primeira carta (embed de `embeds.py`) com os botões de `views.py`.
-4. Cada clique passa pelas regras de `motor.py` e a carta seguinte aparece no mesmo cartão.
+2. Ao ligar, o `BillyBot` abre o banco (`banco.py`), carrega os cogs e, se houver `GUILD_ID`, sincroniza os comandos slash.
+3. O cog `dialogos` cria um comando para cada JSON. Ao digitar `!deuzebio @jogador`, ele busca a memória do jogador
+   (marcas e inventário), publica a primeira carta (embed de `embeds.py`) com os botões de `views.py`.
+4. Cada clique passa pelas regras de `motor.py`, que avisa o que aconteceu (visita, escolha, marca, item). O `views.py` grava isso no banco.
 5. Se a voz estiver ligada, `tts.py` fala só a `fala` de cada carta.
 
-**Regra de ouro:** o que é regra do jogo fica em `core/`, o que é visual em `ui/`, o que é comando em `cogs/` e o que é texto da história em `data/`.
+**Regra de ouro:** o que é regra do jogo fica em `core/`, o que é visual em `ui/`, o que é banco ou serviço externo em `services/`,
+o que é comando em `cogs/` e o que é texto da história em `data/`.
 
 ### Onde entram os próximos sistemas
 
 | Item | Onde vai morar |
 |---|---|
-| 3. Ficha e inventário (`/sheet`) | `billybot/cogs/ficha.py` e `billybot/services/banco.py` (SQLite) |
-| 4. Memória de escolhas | `billybot/services/banco.py` e um gancho em `core/motor.py` |
-| 5. Humor e emoções | `core/motor.py` (o campo `humor` dos JSON já existe) |
-| 6. Diário em Markdown | `billybot/cogs/diario.py` |
+| 5. Humor e emoções | `core/motor.py` (o campo `humor` dos JSON já existe e as condições `se` ganham valores numéricos) |
+| 6. Diário em Markdown | `billybot/cogs/diario.py`, lendo as tabelas `execucoes`, `visitas` e `escolhas` |
 | 7. Blip-TTS | `billybot/services/blips.py` e `assets/audio/blips/` |
 | 8. Trilha por local | `billybot/cogs/ambiente.py` e `assets/audio/ambiente/` |
 | 9. Dashboard Flask | pasta `dashboard/` na raiz, lendo o mesmo SQLite |
 
+## Migrando da versão 1.x
+
+Quem usa a versão 1.x (arquivos soltos na raiz do repositório):
+
+1. Faça um commit do estado atual, para poder voltar atrás.
+2. Apague da raiz os arquivos antigos `bot.py`, `conversas.py`, `motor.py` e `tts.py`.
+   Eles foram substituídos por `main.py` e pela pasta `billybot/`.
+3. Copie a nova estrutura para a raiz do repositório.
+4. Mantenha o seu `.env` na raiz. Os nomes das variáveis continuam os mesmos.
+5. Mova a pasta `imagens/` para `assets/imagens/`.
+6. Rode `python -m pip install -r requirements.txt` e depois `python main.py`.
+
+Se você alterou textos no `conversas.py` depois da versão 1.3.1, passe essas alterações para o
+JSON equivalente. Os nomes dos campos são os mesmos; só mudam a sintaxe e as cores:
+
+| No `conversas.py` | No JSON |
+|---|---|
+| `"texto"` ou `'texto'` | sempre aspas duplas `"texto"` |
+| `None` | `null` |
+| `True` / `False` | `true` / `false` |
+| `"cor": 0xC8761A` | `"tema": "alerta"` (ou `"cor": "#C8761A"`) |
+| comentário `# ...` | JSON não aceita comentários |
+| vírgula depois do último item | JSON não aceita (erro comum) |
+
+### Da 2.0.0 para a 2.1.0
+
+1. Copie os arquivos novos por cima (a pasta `billybot/`, `data/`, `tests/` e o `README.md`).
+2. Atualize o `.env` com as variáveis novas (veja `.env.example`): `GUILD_ID` (recomendado) e, se quiser, `DB_PATH`.
+3. Gere um novo link de convite com o escopo `applications.commands` além de `bot` (veja "Passo a passo") e convide o bot de novo.
+   Não precisa remover o bot do servidor.
+4. Rode `python main.py`. O banco `db/billybot.sqlite` é criado sozinho na primeira vez.
+5. No Discord, use `!personagem @jogador <nome>` para criar os personagens e peça para cada jogador testar `/sheet`.
+
+Nenhuma dependência nova foi adicionada: o banco usa o `sqlite3` que já vem com o Python.
 
 ## Requisitos
 
@@ -146,7 +196,7 @@ BillyBot/
 1. Acesse o [Discord Developer Portal](https://discord.com/developers/applications) e crie uma **New Application**.
 2. Na aba **Bot**, clique em **Reset Token** e copie o token.
 3. Ainda em **Bot**, ative **Message Content Intent** (em *Privileged Gateway Intents*).
-4. Em **OAuth2 → URL Generator**, marque o escopo `bot` e as permissões:
+4. Em **OAuth2 → URL Generator**, marque os escopos `bot` e `applications.commands` (este é necessário para o `/sheet`) e as permissões:
    View Channels, Send Messages, Embed Links, Attach Files e Read Message History.
    Para a voz TTS, o bot também precisa de Connect e Speak no canal de voz.
 5. Abra a URL gerada e adicione o bot ao seu servidor.
@@ -178,12 +228,16 @@ CANAL_COMANDOS_ID=id_do_canal_de_comandos
 CANAL_RPG_ID=id_do_canal_do_rpg
 VOZ_CANAL_ID=id_do_canal_de_voz
 FFMPEG_PATH=ffmpeg
+GUILD_ID=id_do_servidor
 ```
 
 Se `CANAL_COMANDOS_ID` for `0`, o bot aceita comandos em qualquer canal.
 Se `CANAL_RPG_ID` for `0`, a conversa aparece no mesmo canal do comando.
 Se `VOZ_CANAL_ID` for `0`, a voz fica desligada. `FFMPEG_PATH` só precisa mudar se o
 FFmpeg não estiver no PATH do sistema.
+`GUILD_ID` é o ID do seu servidor (botão direito no servidor, **Copiar ID do servidor**) e faz os comandos slash
+aparecerem na hora. Com `0`, eles são globais e podem levar até 1 hora. Opcionalmente, `DB_PATH` muda o
+lugar do banco de dados (veja "Solução de problemas" se o projeto estiver no OneDrive).
 
 ### 5. Ligar o bot
 
@@ -194,6 +248,7 @@ python main.py
 Se aparecer `Bot online como ...`, está funcionando.
 
 ## Comandos
+**Conversas**
 
 | Comando | O que faz |
 |---|---|
@@ -203,18 +258,49 @@ Se aparecer `Bot online como ...`, está funcionando.
 | `!stefano [@jogador]` | Conversa com Stefano Sero |
 | `!sobrevivente [@jogador]` | Conversa com o Sobrevivente Errante |
 | `!prologo [@jogador]` | Prólogo: o despertar da criogenia até o portão |
-| `!recarregar` | Relê os JSON de `data/` sem reiniciar o bot |
+| `!recarregar` | Relê os JSON de `data/` (conversas, temas e itens) sem reiniciar o bot |
+
+**Ficha e inventário** (item 3)
+
+| Comando | O que faz |
+|---|---|
+| `/sheet` | **Jogador:** mostra a própria ficha e o inventário (só ele vê) |
+| `!personagem @jogador <nome>` | Cria ou renomeia o personagem |
+| `!ficha @jogador` | Mostra a ficha, o inventário e as marcas de um jogador |
+| `!saude @jogador +10` / `-5` / `=80` | Cura, fere ou define a saúde (fica entre 0 e a saúde máxima) |
+| `!status @jogador <texto>` | Muda o status (ex.: `Contaminado`) |
+| `!local @jogador <texto>` | Muda o local atual |
+| `!dar @jogador <item> [qtd]` | Entrega itens do catálogo |
+| `!tirar @jogador <item> [qtd]` | Retira itens |
+| `!itens` | Lista os itens cadastrados e seus ids |
+
+**Memória de escolhas** (item 4)
+
+| Comando | O que faz |
+|---|---|
+| `!memoria @jogador` | Mostra as conversas feitas e as marcas do jogador |
+| `!marca @jogador <marca>` | Dá uma marca à mão |
+| `!desmarcar @jogador <marca>` | Tira uma marca |
+| `!esquecer @jogador [conversa] confirmar` | Apaga a memória de uma conversa (ou de todas). Sem `confirmar`, só avisa |
+
+**Voz e administração**
+
+| Comando | O que faz |
+|---|---|
 | `!vozes` | Lista as vozes TTS disponíveis em português do Brasil |
 | `!testarvoz <id>` | Fala a primeira fala de um NPC no canal de voz, para ajustar a voz |
+| `!sincronizar` | Envia os comandos slash (`/sheet`) ao Discord |
 | `!help` | Lista os comandos do bot |
 
-O `[@jogador]` é opcional. Marcando um jogador, o nome dele entra nas falas e só
-ele pode clicar nos botões. Sem marcar, o nome nas falas vira "viajante" e qualquer
-pessoa do canal pode responder.
+O `[@jogador]` das conversas é opcional. Marcando um jogador, o nome dele entra nas falas, só ele pode clicar nos
+botões e **o bot lembra e grava a conversa dele**. Sem marcar, o nome nas falas vira "viajante", qualquer pessoa do
+canal pode responder e nada é gravado.
 
 Cada novo JSON em `data/npcs/` ou `data/story/` ganha o seu comando automaticamente
-(use `!recarregar` ou reinicie o bot). Se o id coincidir com um comando do bot
-(`help`, `conversas`, `recarregar`, `falar`, `vozes`, `testarvoz`), o bot recusa o arquivo e avisa.
+(use `!recarregar` ou reinicie o bot). O id não pode ser o nome de um comando do bot
+(`help`, `conversas`, `recarregar`, `falar`, `vozes`, `testarvoz`, `personagem`, `ficha`, `saude`, `status`,
+`local`, `dar`, `tirar`, `itens`, `memoria`, `marca`, `desmarcar`, `esquecer`, `sincronizar`, `sheet`):
+nesse caso o bot recusa o arquivo e avisa.
 
 ## Como criar uma nova conversa
 
@@ -286,7 +372,10 @@ A linha `"$schema"` faz o VS Code sublinhar erros e sugerir campos enquanto voc�
 | `fala` | O que o NPC diz, em citação. É só isto que o TTS fala |
 | `fala_tts` | Opcional. Mesma fala escrita como se fala, só para a voz (pronúncia) |
 | `narracao_final` | Cena que aparece depois da fala |
-| `itens` | Itens que o jogador recebe, mostrados em "Itens obtidos" |
+| `itens` | Itens que o jogador recebe, mostrados em "Itens obtidos" (só o texto na tela) |
+| `da_itens` | Itens que o jogador **realmente** recebe no inventário ao chegar na carta: `{"mochila": 1}` |
+| `marca` | Marca guardada na memória do jogador ao chegar na carta |
+| `variantes` | Trocam textos da carta quando uma condição `se` vale (veja "Memória de escolhas e condições") |
 | `opcoes` | Botões de resposta do jogador |
 
 ### Campos de uma opção
@@ -298,6 +387,8 @@ A linha `"$schema"` faz o VS Code sublinhar erros e sugerir campos enquanto voc�
 | `reacao` | Narração curta que abre o próximo nó |
 | `abordagem` | Soma 1 ponto em uma categoria (ex.: `"pacifica"`) |
 | `uma_vez` | O botão some depois de usado |
+| `marca` | Marca guardada na memória do jogador quando ele escolhe esta opção |
+| `se` | O botão só aparece se a condição valer, por exemplo `{"item": "relogio_dormente"}` |
 
 Use `{jogador}` dentro de uma fala para inserir o nome de quem está conversando.
 
@@ -457,6 +548,140 @@ valores positivos deixam mais rápida e mais aguda. Depois de mudar, use `!recar
   Ele pode mudar ou ficar fora do ar. Se isso acontecer, o diálogo por texto continua
   funcionando normalmente.
 
+## Ficha de personagem e inventário
+Cada jogador tem um personagem com **saúde**, **status**, **local** e **inventário**, guardados em um banco
+SQLite (`db/billybot.sqlite`). O arquivo e as tabelas são criados sozinhos na primeira vez que o bot liga.
+
+### Para o jogador: `/sheet`
+
+É um comando slash e a resposta é **privada** (só quem digitou vê). Mostra:
+
+- a saúde, com uma barra (`▰▰▰▰▰▱▱▱▱▱  50/100`);
+- o status e o local;
+- o inventário, separado por categoria.
+
+A cor do cartão acompanha a saúde: verde (60% ou mais), âmbar (de 30% a 59%) e vermelho (abaixo de 30%).
+
+### Para o mestre
+
+No canal de comandos, crie o personagem e cuide da ficha (a tabela completa está em "Comandos"):
+
+```
+!personagem @Alan Eli Moreira
+!saude @Alan -30
+!status @Alan Contaminado
+!dar @Alan sucata_metal 3
+```
+
+### Ativar o `/sheet`
+
+1. O convite do bot precisa do escopo `applications.commands` (veja o passo 1 de "Passo a passo").
+2. Coloque o ID do servidor em `GUILD_ID` no `.env`. Assim, o bot sincroniza os comandos ao ligar e eles aparecem na hora.
+   Sem `GUILD_ID`, use `!sincronizar` (comando global, pode levar até 1 hora).
+3. Reinicie o bot, digite `/` no Discord e escolha `sheet`.
+
+### Itens: `data/itens.json`
+
+```json
+"stimpak": { "nome": "Stimpak", "categoria": "consumivel", "emoji": "💉", "descricao": "Cura ferimentos rapidamente." }
+```
+
+O id (`stimpak`) é o que se usa em `!dar`, em `da_itens` e nas condições `se`. Só `nome` é obrigatório.
+
+| Categoria | Título na ficha |
+|---|---|
+| `sucata` | 🔩 Sucata |
+| `consumivel` | 💊 Consumíveis |
+| `equipamento` | 🎒 Equipamento |
+| `chave` | 🗝️ Chaves |
+| `diverso` | 📦 Diversos (padrão) |
+
+Depois de editar, use `!recarregar`. Os itens vêm cadastrados de exemplo (sucata, Stimpak, RadAway, as chaves do Deuzébio etc.).
+
+### Itens que as conversas entregam
+
+Uma carta com `"da_itens": {"chave_escritorio": 1}` coloca o item no inventário do jogador quando ele chega nela,
+**uma vez por conversa**. Isso exige que o jogador tenha personagem e esteja marcado no comando. Se não tiver, o bot
+avisa o mestre no canal de comandos e os itens não são entregues (use `!personagem` e depois `!dar`).
+
+## Memória de escolhas e condições
+Quando o mestre marca um jogador (`!prologo @jogador`), o bot passa a **lembrar** do que ele fez. Essa memória
+pode mudar conversas futuras: botões que aparecem ou somem e falas que mudam.
+
+### O que é gravado (tabelas do SQLite)
+
+| Tabela | O que guarda |
+|---|---|
+| `execucoes` | Cada vez que o jogador começou uma conversa: quando, como terminou (`terminou` ou `expirou`) e em qual carta |
+| `visitas` | Cada carta que ele viu |
+| `escolhas` | Cada botão que clicou (de qual carta, o texto e para qual carta foi) |
+| `marcas` | As escolhas marcantes, que valem para sempre (até o mestre apagar) |
+
+As tabelas `visitas` e `escolhas` também são a base do diário de sessão (item 6).
+
+### Marcas: as escolhas marcantes
+
+Uma marca é uma etiqueta como `roubou_relogio`. Ela nasce de duas formas:
+
+```json
+{ "texto": "Pegar o relógio do homem congelado.", "proximo": "roubar", "marca": "roubou_relogio" }
+```
+
+- `marca` em uma **opção**: criada quando o jogador clica nela.
+- `marca` em uma **carta**: criada quando o jogador chega nela (os finais do Deuzébio usam isso).
+
+Nomes de marca: só letras minúsculas, números e `_`. Se uma conversa usa uma marca que nenhuma outra cria,
+o bot avisa ao ligar (o mestre ainda pode criá-la com `!marca`).
+
+### Condições `se`
+
+O bloco `se` vale em opções (mostra ou esconde o botão) e em variantes. Todas as chaves presentes precisam ser verdadeiras:
+
+| Chave | Significa |
+|---|---|
+| `{"marca": "roubou_relogio"}` | o jogador tem esta marca |
+| `{"sem_marca": "roubou_relogio"}` | o jogador **não** tem esta marca |
+| `{"item": "relogio_dormente"}` | o jogador tem este item no inventário |
+| `{"sem_item": "relogio_dormente"}` | o jogador **não** tem este item |
+
+Cada chave aceita um texto ou uma lista (`"marca": ["a", "b"]` exige as duas).
+
+### Variantes: a mesma carta, falas diferentes
+
+```json
+"carta1": {
+  "narracao": "No chão frio, um velho jaz de lado.",
+  "fala": "Quem é você, guri?",
+  "variantes": [
+    { "se": { "marca": "roubou_relogio" },
+      "narracao": "No chão frio, um velho jaz de lado. O olhar dele pousa no seu bolso." }
+  ],
+  "opcoes": [ ... ]
+}
+```
+
+Vale a primeira variante cuja condição for atendida. Uma variante só pode trocar `tema`, `cor`, `narracao`, `fala`,
+`fala_tts`, `narracao_final` e `itens`. Os botões continuam sendo os da carta.
+
+### Exemplo no jogo: o relógio
+
+1. No prólogo, na carta `camaras`, o jogador pode **pegar o relógio do homem congelado**. Isso cria a marca
+   `roubou_relogio` e entrega o item `relogio_dormente`. O botão some depois (`sem_marca`).
+2. Mais tarde, em `!deuzebio @jogador`, quem tem a marca vê o olhar do velho pousar no bolso (variante da `carta1`).
+3. Quem ainda tem o relógio no inventário ganha, na `carta3`, o botão **Mostrar o relógio que você pegou** (`se` com `item`).
+4. Quem não roubou nada não vê nenhuma dessas diferenças.
+
+### Ferramentas do mestre
+
+`!memoria @jogador` mostra o histórico e as marcas. `!marca` e `!desmarcar` ajustam marcas à mão, e
+`!esquecer @jogador [conversa] confirmar` apaga a memória (inclusive para repetir o prólogo do zero).
+
+### Regras importantes
+
+- Sem jogador marcado no comando, **nada é gravado** e as condições `se` partem de "sem marcas e sem itens".
+- Toda carta com botões precisa ter **ao menos uma opção sem `se`**, senão o jogador poderia ficar sem saída. O bot recusa o JSON.
+- Se o banco falhar durante uma conversa, o erro vai para o terminal e a conversa continua normalmente.
+
 ## Solução de problemas
 
 
@@ -545,26 +770,81 @@ e nunca chega a um final. Dê a ela uma opção com `"proximo": null` ou que lev
 Confira o `CANAL_RPG_ID` no `.env` e se o bot tem permissão para ver e escrever
 nesse canal (View Channels, Send Messages e Embed Links).
 
-## Próximas atualizações
+### O `/sheet` não aparece no Discord
 
+1. O convite precisa do escopo `applications.commands`. Se o bot foi convidado só com `bot`, gere um novo link
+   (**OAuth2 → URL Generator**, marcando `bot` e `applications.commands`) e convide de novo. Não precisa remover o bot.
+2. Defina `GUILD_ID` no `.env` e reinicie, ou use `!sincronizar`. Sem `GUILD_ID`, comandos globais levam até 1 hora.
+3. Se o log mostrar `Não consegui sincronizar os comandos slash ... 403 Missing Access`, o motivo é o item 1.
+4. Recarregue o Discord (`Ctrl+R`) depois de sincronizar.
+
+### "database is locked" ou o banco dá erro
+
+Se o projeto está dentro do OneDrive (por exemplo, `Área de Trabalho`), o OneDrive pode travar o arquivo `.sqlite`
+enquanto sincroniza. O bot avisa isso ao ligar. Coloque o banco fora do OneDrive, definindo no `.env`:
+
+```
+DB_PATH=C:\BillyBot\billybot.sqlite
+```
+
+A pasta é criada sozinha. Para começar do zero, feche o bot e apague o arquivo `.sqlite`.
+
+### O jogador não recebeu os itens de uma conversa
+
+1. O jogador precisa ter personagem (`!personagem @jogador <nome>`).
+2. O comando precisa marcar o jogador (`!prologo @jogador`). Sem marcar, nada é gravado nem entregue.
+3. Olhe o canal de comandos: quando falta o personagem, o bot escreve qual item não foi entregue.
+4. Confira com `!ficha @jogador` e `!memoria @jogador`.
+
+### Uma opção sumiu (ou não aparece) em uma conversa
+
+Opções com `se` ou `uma_vez` só aparecem quando a condição vale. Use `!memoria @jogador` e `!ficha @jogador`
+para ver as marcas e os itens do jogador. Para repetir uma conversa do zero, use `!esquecer @jogador <conversa> confirmar`.
+
+## Próximas atualizações
 Roteiro das melhorias planejadas, em ordem de complexidade.
 
 | # | Melhoria | Situação |
 |---|---|---|
 | 1 | Diálogos e fichas de NPC em JSON (`data/npcs/` e `data/story/`) | Pronto na 2.0.0 |
 | 2 | Embeds dinâmicos com temas visuais | Pronto na 2.0.0 |
-| 3 | Ficha de personagem e inventário com `/sheet` (SQLite) | Em desenvolvimento (2.1.0) |
-| 4 | Memória de escolhas (histórico de nós e escolhas críticas) | Em desenvolvimento (2.1.0) |
-| 5 | Humor e emoções dinâmicas (variáveis de estado que liberam opções) | Em Planejamento |
-| 6 | Diário de sessão exportável em Markdown | Em Planejamento |
-| 7 | Blip-TTS no estilo Undertale/Deltarune | Em Planejamento |
-| 8 | Trilha sonora dinâmica por local, no canal de voz | Em Planejamento |
-| 9 | Dashboard web de administração (Flask) | Em Planejamento |
+| 3 | Ficha de personagem e inventário com `/sheet` (SQLite) | Pronto na 2.1.0 |
+| 4 | Memória de escolhas (histórico de nós e escolhas críticas) | Pronto na 2.1.0 |
+| 5 | Humor e emoções dinâmicas (variáveis de estado que liberam opções) | Em Desenvolvimento (2.2.0) |
+| 6 | Diário de sessão exportável em Markdown | Em Desenvolvimento (2.2.0) |
+| 7 | Blip-TTS no estilo Undertale/Deltarune | Planejada |
+| 8 | Trilha sonora dinâmica por local, no canal de voz | Planejada |
+| 9 | Dashboard web de administração (Flask) | Planejada |
 
-A ideia de usar atributos da ficha nas conversas (por exemplo, negociar um pedágio conforme o
-Carisma) volta junto com os itens 3 e 5. A ideia de bots de NPC separados continua anotada para depois.
+O item 5 aproveita a base do item 4: o campo `humor` dos JSON já é lido e as condições `se` vão ganhar comparações
+numéricas (por exemplo, `medo` acima de 50). O item 6 vai ler as tabelas `execucoes`, `visitas` e `escolhas`, que já estão sendo gravadas.
+A ideia de bots de NPC separados continua anotada para depois.
 
 ## Histórico de alterações
+### [2.1.0] – 2026-11-19
+
+- Item 3: ficha de personagem e inventário em banco SQLite (`db/billybot.sqlite`), com o comando slash `/sheet`
+  (resposta privada) e os comandos do mestre `!personagem`, `!ficha`, `!saude`, `!status`, `!local`, `!dar`, `!tirar` e `!itens`.
+- Item 3: catálogo de itens em `data/itens.json` (13 itens de exemplo) e o tema `aviso` em `data/temas.json`.
+  A cor da ficha segue a saúde (verde, âmbar, vermelho).
+- Item 3: cartas podem entregar itens ao inventário com `da_itens` (uma vez por conversa).
+- Item 4: memória de escolhas. O bot grava execuções, cartas visitadas, escolhas e marcas de cada jogador marcado no comando.
+- Item 4: novos campos de JSON: `marca` (em opção ou carta), `se` (condição em opção), `da_itens` e `variantes` (em carta).
+- Item 4: comandos `!memoria`, `!marca`, `!desmarcar` e `!esquecer` (com confirmação).
+- Prólogo: é possível pegar o relógio do homem congelado (marca `roubou_relogio` e item `relogio_dormente`).
+  O Deuzébio reage com uma variante da `carta1` e com a opção "Mostrar o relógio" na `carta3`.
+- Os finais do Deuzébio criam marcas (`deuzebio_poupado`, `deuzebio_sermao`, `deuzebio_revistado`, `deuzebio_confessou`)
+  e entregam a chave do escritório (ou a chave sem identificação, no final agressivo).
+- O carregador valida itens, marcas, condições, variantes e `da_itens`, exige ao menos uma opção sem `se` em cada carta
+  e avisa de marcas usadas que nenhuma conversa cria e de cartas sem saída.
+- Novos arquivos: `services/banco.py`, `services/personagens.py`, `services/memoria.py` e os cogs `ficha`, `memoria` e `admin`.
+- Novas variáveis no `.env`: `GUILD_ID` (sincroniza os slash ao ligar) e `DB_PATH` (opcional). Novo comando `!sincronizar`.
+- O convite do bot agora precisa do escopo `applications.commands`.
+- Mensagens de argumento inválido ficaram mais claras (por exemplo, quantidade que não é número).
+- Ao ligar, o bot avisa se o banco está dentro do OneDrive.
+- Corrigido: a barra de saúde mostrava um bloco cheio quando a saúde máxima era 0.
+- Testes: 142 testes automáticos, incluindo um teste de ponta a ponta do prólogo até o Deuzébio.
+
 
 ### [2.0.0] – 2026-11-12
 
