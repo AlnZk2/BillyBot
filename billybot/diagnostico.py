@@ -18,7 +18,19 @@ def resumo_de_inicializacao(settings, catalogo):
         f".env usado: {settings.caminho_env or 'nenhum encontrado'}",
         f"Conversas ({len(catalogo.conversas)}): {', '.join(catalogo.conversas) or 'nenhuma'}",
         f"Temas ({len(catalogo.temas)}): {', '.join(catalogo.temas)}",
+        f"Itens cadastrados: {len(catalogo.itens)}",
+        f"Banco de dados: {settings.caminho_db}",
     ]
+    if "onedrive" in str(settings.caminho_db).lower():
+        linhas.append(
+            "Aviso: o banco está dentro do OneDrive, que pode travar o arquivo. "
+            "Se aparecer 'database is locked', defina DB_PATH no .env para uma pasta fora do OneDrive."
+        )
+    if not settings.guild_id:
+        linhas.append(
+            "Comandos slash (/sheet): defina GUILD_ID no .env para sincronizar ao ligar, "
+            "ou use !sincronizar (global, pode levar até 1 hora)."
+        )
     linhas += [f"Aviso: {aviso}" for aviso in catalogo.avisos]
 
     com_foto, sem_foto = [], []
