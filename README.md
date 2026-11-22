@@ -20,7 +20,7 @@ Os Subsolos possuem números, que representam a região (Norte, Nordeste, Centro
 
 Você começa acordando em um subsolo conhecido como Subsolo 57, localizado no centro do Rio Grande do Sul, não lembra de muita coisa sobre seu passado, mas lembra que recebeu um convite para se abrigar no subsolo caso um alarme emergencial tocasse e dias depois, uma das bombas foi detectada se aproximando na cidade, após isso, resolveu correr em direção ao abrigo, só que não sabia que esse tal abrigo era um experimento de criogenia, ficando congelado por anos, ou seja, se passaram 125 anos após o ocorrido, assim, acordando depois que a câmara de criogênio apresentou um defeito que o fez acordar de repente, nesse abrigo, encontra outras pessoas congeladas. E assim, começa a sua história
 
-# Subsolo 57 – Bot de NPCs para Discord
+# Bot de NPCs para Discord
 
 ## Sobre o projeto
 
